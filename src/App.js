@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Route, Switch, Link } from "react-router-dom";
 import "./styles.css";
 import Editor from "./components/editor";
+import { renderToStaticMarkup } from "react-dom/server";
 
 export default function App() {
   const [title, setTitle] = useState("");
@@ -23,9 +24,9 @@ export default function App() {
         <Switch>
           <Route path="/" exact>
             <div>
+              <button onClick={(e) => console.log(content)}>LOG CONTENT</button>
               <h2>Editor screenshot</h2>
-              <h4>{title}</h4>
-              <p>{content}</p>
+              <div dangerouslySetInnerHTML={{ __html: content }}></div>
             </div>
           </Route>
           <Route path="/editor" exact>

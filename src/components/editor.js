@@ -20,88 +20,148 @@ const styles = {
   },
 };
 
+const initialValue = [
+  {
+    children: [
+      {
+        text:
+          "Since the editor is based on a recursive tree model, similar to an HTML document, you can create complex nested structures, like tables:",
+      },
+    ],
+  },
+  {
+    type: "table",
+    children: [
+      {
+        type: "table-row",
+        children: [
+          {
+            type: "table-cell",
+            children: [{ text: "" }],
+          },
+          {
+            type: "table-cell",
+            children: [{ text: "Human", bold: true }],
+          },
+          {
+            type: "table-cell",
+            children: [{ text: "Dog", bold: true }],
+          },
+          {
+            type: "table-cell",
+            children: [{ text: "Cat", bold: true }],
+          },
+        ],
+      },
+      {
+        type: "table-row",
+        children: [
+          {
+            type: "table-cell",
+            children: [{ text: "# of Feet", bold: true }],
+          },
+          {
+            type: "table-cell",
+            children: [{ text: "2" }],
+          },
+          {
+            type: "table-cell",
+            children: [{ text: "4" }],
+          },
+          {
+            type: "table-cell",
+            children: [{ text: "4" }],
+          },
+        ],
+      },
+      {
+        type: "table-row",
+        children: [
+          {
+            type: "table-cell",
+            children: [{ text: "# of Lives", bold: true }],
+          },
+          {
+            type: "table-cell",
+            children: [{ text: "1" }],
+          },
+          {
+            type: "table-cell",
+            children: [{ text: "1" }],
+          },
+          {
+            type: "table-cell",
+            children: [{ text: "9" }],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    children: [
+      {
+        text:
+          "This table is just a basic example of rendering a table, and it doesn't have fancy functionality. But you could augment it to add support for navigating with arrow keys, displaying table headers, adding column and rows, or even formulas if you wanted to get really crazy!",
+      },
+    ],
+  },
+];
 // Define a deserializing function that takes a string and returns a value.
 
 //
 const RichTextEditor = ({ handleTitleChange, title }) => {
   const serializeHtml = (node) => {
     if (Text.isText(node)) {
-      return escapeHtml(node.text);
+      if (node["bold"]) return `<strong>${escapeHtml(node.text)}</strong>`;
+      if (node["code"]) return `<code>${escapeHtml(node.text)}</code>;`;
+      if (node["italic"]) return `<em>${escapeHtml(node.text)}</em>;`;
+      if (node["underline"]) return `<u>${escapeHtml(node.text)}</u>`;
+      else return escapeHtml(node.text);
     }
 
     const children = node.children.map((n) => serializeHtml(n)).join("");
-    console.log(children);
 
     switch (node.type) {
       case "quote":
-        return `<blockquote><p>${children}</p></blockquote>`;
+        return `<blockquote>${children}</blockquote>`;
       case "paragraph":
         return `<p>${children}</p>`;
       case "link":
         return `<a href="${escapeHtml(node.url)}">${children}</a>`;
+      case "table":
+        return `<table><tbody>${children}</tbody></table>`;
+      case "table-row":
+        return `<tr>${children}</tr>`;
+      case "table-cell":
+        return `<td>${children}</td>`;
       default:
         return children;
     }
-  };
-
-  const serialize = (value) => {
-    return (
-      value
-        // Return the string content of each paragraph in the value's children.
-        .map((n) => Node.string(n))
-        // Join them all with line breaks denoting paragraphs.
-        .join("\n")
-    );
-  };
-
-  const deserialize = (string) => {
-    // Return a value array of children derived by splitting the string.
-    return string.split("\n").map((line) => {
-      return {
-        children: [{ text: line }],
-      };
-    });
   };
 
   const renderElement = useCallback((props) => <Element {...props} />, []);
   const renderLeaf = useCallback((props) => <Leaf {...props} />, []);
   const editor = useMemo(() => withHistory(withReact(createEditor())), []);
 
-  const [value, setValue] = useState([
-    {
-      type: "paragraph",
-      children: [{ text: "An opening paragraph with a " }, { text: " in it." }],
-    },
-    {
-      type: "quote",
-      children: [{ text: "A wise quote." }],
-    },
-    {
-      type: "paragraph",
-      children: [{ text: "A closing paragraph!" }],
-    },
-  ]);
+  const [value, setValue] = useState(initialValue);
 
   const handleChange = (value) => {
     setValue(value);
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    //JSON STRING
-
-    localStorage.setItem("contentText", JSON.stringify(serializeHtml(value)));
+  const handleSave = () => {
+    const html = value.map((n) => serializeHtml(n)).join("");
+    localStorage.setItem("contentText", html);
   };
 
   return (
     <div>
-      <form onSubmit={(e) => handleSubmit(e)} style={{ background: "red" }}>
+      <form style={{ background: "red" }}>
         <input
           type="text"
           value={title}
           onChange={(e) => handleTitleChange(e) || console.log(title)}
         />
-        <input type="submit" value={"submit"} />
       </form>
       <Slate
         editor={editor}
@@ -120,6 +180,7 @@ const RichTextEditor = ({ handleTitleChange, title }) => {
             <BlockButton format="block-quote" />
             <BlockButton format="numbered-list" />
             <BlockButton format="bulleted-list" />
+            <button onClick={(e) => handleSave()}>save</button>
           </div>
         </div>
         <Editable
@@ -190,6 +251,16 @@ const Element = ({ attributes, children, element }) => {
       return <li {...attributes}>{children}</li>;
     case "numbered-list":
       return <ol {...attributes}>{children}</ol>;
+    case "table":
+      return (
+        <table>
+          <tbody {...attributes}>{children}</tbody>
+        </table>
+      );
+    case "table-row":
+      return <tr {...attributes}>{children}</tr>;
+    case "table-cell":
+      return <td {...attributes}>{children}</td>;
     default:
       return <p {...attributes}>{children}</p>;
   }
